@@ -1,6 +1,9 @@
 # By default the file size limit is 5MB. Here limit is 70MB.
 options(shiny.maxRequestSize = 70*1024^2)
 
+# Increase memory limit
+memory.size(max = FALSE)
+
 source("helpers.R")
 
 shinyServer(function(input, output, session){
@@ -220,7 +223,7 @@ fnMakeMapsWithProgress<-function(vecVblePintar, discretedata="no", labelstext=NU
 
 
 
-output$errorsatscannotinstalled<-renderText({""})
+output$errorinlaorsatscannotinstalled<-renderText({""})
 
 observeEvent(input$detectclustersButton, {
 
@@ -234,11 +237,11 @@ executablepath<-"ss/SaTScanBatch64"
 if(!file.exists(executablepath)){
 updateTextInput(session, "selectdetectclusters", value = 'notdone')
 msgerrorsatscan <- paste0("To detect clusters SaTScan needs to be installed, and the SaTScanBatch64 executable needs to be placed in the SpatialEpiApp/SpatialEpiApp/ss folder which is located in the R library path.")
-output$errorsatscannotinstalled <- renderText({ print(msgerrorsatscan) })
+output$errorinlaorsatscannotinstalled <- renderText({ print(msgerrorsatscan) })
 }
 
 if(file.exists(executablepath)){
-    output$errorsatscannotinstalled <- renderText({""})
+    output$errorinlaorsatscannotinstalled <- renderText({""})
     fnDetectClustersSatscanInstalled(executablepath)
 }
 })
@@ -334,9 +337,27 @@ observeEvent(input$makemapsOESIRButton, {
   fnMakeMapsWithProgress(vecVblePintar,discretedata="no",labelstext=NULL,labelsx=NULL,labelsy=NULL,allmapssamelegend="no")
 })
 
+#############################################################
 
 
 observeEvent(input$estimateriskButton, {
+
+  inlainstalled<-require(INLA)
+  #inlainstalled<-FALSE
+  if(!inlainstalled){
+    updateTextInput(session, "selectestimaterisk", value = 'notdone')
+    msgerrorinla <- paste0("To estimate risk the R-INLA package needs to be installed, http://www.r-inla.org.")
+    output$errorinlaorsatscannotinstalled <- renderText({ print(msgerrorinla) })
+  }
+
+  if(inlainstalled){
+    output$errorinlaorsatscannotinstalled <- renderText({""})
+    fnEstimateRiskINLAInstalled()
+  }
+})
+
+fnEstimateRiskINLAInstalled<-function(){
+
   shinyjs::disable("estimateriskButton")
 
   #Estimate risk
@@ -357,7 +378,7 @@ observeEvent(input$estimateriskButton, {
 
   }
 
-})
+}
 
 
 
@@ -534,7 +555,10 @@ observe({
       file.rename(shpdf$datapath[i], shpdf$name[i])
     }
   setwd(previouswd)
-  map <- readShapePoly(paste(uploaddirectory, shpdf$name[grep(pattern="*.shp", shpdf$name)], sep="/"),  delete_null_obj=TRUE)
+  #map <- readShapePoly(paste(uploaddirectory, shpdf$name[grep(pattern="*.shp", shpdf$name)], sep="/"),  delete_null_obj=TRUE)
+  map <- readOGR(paste(uploaddirectory, shpdf$name[grep(pattern="*.shp", shpdf$name)], sep="/"))#,  delete_null_obj=TRUE)
+  map <- spTransform(map, CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"))
+
   rv$map<-map
 
 })
@@ -556,10 +580,10 @@ observeEvent(input$startAnalysisButton, {
 
 #############################
 #DELETE input$useSampleData 4
-#if(input$useSampleData){
-#rv$datosOriginal<-read.csv("data/Ohio/dataohiocomplete.csv")
-#rv$map<-readShapePoly("data/Ohio/fe_2007_39_county/fe_2007_39_county", delete_null_obj=TRUE)
-#}else{
+if(input$useSampleData){
+rv$datosOriginal<-read.csv("data/Ohio/dataohiocomplete.csv")
+rv$map<-readShapePoly("data/Ohio/fe_2007_39_county/fe_2007_39_county", delete_null_obj=TRUE)
+}else{
 
 if (is.null(rv$map)){
   rv$messageCheckDataText<-"Error: Map is not uploaded."
@@ -580,7 +604,7 @@ if(input$columnidareaindata=="" || input$columndateindata=="" || input$columncas
 }
 
 #DELETE input$useSampleData 1
-#}
+}
 
 #############################
 
@@ -604,11 +628,11 @@ rv$columnnameareainmap<-input$columnnameareainmap
 rv$columnnamesuperareainmap<-input$columnnamesuperareainmap
 
 # DELETE input$useSampleData 5
-#if(input$useSampleData){
-#rv$columnidareainmap<-"NAME"
-#rv$columnnameareainmap<-"NAME"
-#rv$columnnamesuperareainmap<-"-"
-#}
+if(input$useSampleData){
+rv$columnidareainmap<-"NAME"
+rv$columnnameareainmap<-"NAME"
+rv$columnnamesuperareainmap<-"-"
+}
 
 # Populate selectInput names superarea
 
@@ -633,18 +657,18 @@ idinmap<-input$columnidareainmap
 temporalunit<-switch(input$temporalUnitButton, "Year" = "year", "Month" = "month", "Day" = "day")
 
 #DELETE input$useSampleData 12
-#if(input$useSampleData){
-#  id<-"NAME"
-#  timeraw<-"year"
-#  cases<-"y"
-#  pop<-"n"
-#  cov1<-"gender"
-#  cov2<-"race"
-#  cov3<-"-"
-#  cov4<-"-"
-#  idinmap<-"NAME"
-#  temporalunit<-"year"
-#}
+if(input$useSampleData){
+  id<-"NAME"
+  timeraw<-"year"
+  cases<-"y"
+  pop<-"n"
+  cov1<-"gender"
+  cov2<-"race"
+  cov3<-"-"
+  cov4<-"-"
+  idinmap<-"NAME"
+  temporalunit<-"year"
+}
 
 
 
